@@ -576,7 +576,20 @@ func (parser *Parser) parseStruct(pkgName string, field *ast.Field) (properties 
 }
 
 func (parser *Parser) parseAnonymousField(pkgName string, field *ast.Field, properties map[string]spec.Schema) {
-	if astTypeIdent, ok := field.Type.(*ast.Ident); ok {
+	astType := field.Type
+	// If a pointer return the real expression
+	if astTypeStar, ok := astType.(*ast.StarExpr); ok {
+		astType = astTypeStar.X
+	}
+	// If a selector, grab the package and use it
+	// Set the new type to the object
+	if astTypeSel, ok := astType.(*ast.SelectorExpr); ok {
+		if astPkg, ok := astTypeSel.X.(*ast.Ident); ok {
+			pkgName = astPkg.Name
+		}
+		astType = astTypeSel.Sel
+	}
+	if astTypeIdent, ok := astType.(*ast.Ident); ok {
 		findPgkName := pkgName
 		findBaseTypeName := astTypeIdent.Name
 		ss := strings.Split(astTypeIdent.Name, ".")
